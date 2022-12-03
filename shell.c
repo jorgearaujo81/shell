@@ -88,7 +88,6 @@ void bash_mode(char *file)
 
      while (run)
      {
-     
           args = fgets(line, limit, file_read);
           
           if (args == NULL)
@@ -106,17 +105,22 @@ void bash_mode(char *file)
                     printf("%s\n", args);
                }
           }
-     
-          if (count_line == lines)
-          {
-               fprintf(stderr, "enter 'exit' to finsh bash mode: \n");
-               args = fgets(line, limit, stdin);
-               arg = strtok(args, "\n");
-               if(!strcmp(arg, EXIT))
-                    exit(EXIT_SUCCESS);
-          }
 
-          count_line++;
+          if (count_line == lines && strcmp(arg, EXIT))
+          {
+               while (run)
+               {
+                    fprintf(stderr, "enter 'exit' to finsh bash mode: \n");
+
+                    args = fgets(line, limit, stdin);
+                    arg = strtok(args, "\n");
+
+                    if(!strcmp(arg, EXIT))
+                         exit(EXIT_SUCCESS);
+               }
+          }
+          if (count_line < lines)
+               count_line++;
      }
      
     fclose(file_read);
