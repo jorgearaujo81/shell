@@ -81,7 +81,7 @@ continuar o processamento ou sair, a depender das situações, descritas abaixo:
 
 1. imprimir uma mensagem e encerrar a execução quando:
 • um número incorreto de argumento para os comando shell for passado
-• se o arquivo a se utilizado no modo batch não existir ou não puder ser aberto
+• se o arquivo a ser utilizado no modo batch não existir ou não puder ser aberto
 
 2. imprimir uma mensagem de erro e continuar processando
 • quando o comando não existe ou não puder ser executado
