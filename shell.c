@@ -5,6 +5,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <errno.h>
+#include <signal.h>
 
 #define LIMIT_MAX 80
 #define SEQ "style sequential"
@@ -13,8 +14,10 @@
 
 void style_parallel(void);
 void style_sequential(void);
-void bash_mode(char *);
-void fgets_input(char *);
+void bash_mode(char *file);
+void fgets_input(char *line);
+int handling_input (char **commandv, char *line);
+void current_command(int index,  char **argumentv, char **commandv);
 
 pid_t pid;
 int status;
@@ -22,7 +25,9 @@ char line[LIMIT_MAX];
 int run = 1;
 char *args, *arg;
 char *commandv[LIMIT_MAX/2 + 1];
+int commandc;
 char *argumentv[LIMIT_MAX/2 + 1];
+int limit = LIMIT_MAX/2 + 1;
 
 
 void main(int argc, char *argv[])
@@ -42,50 +47,49 @@ void main(int argc, char *argv[])
 
 void style_sequential()
 {
-     
-
      while (run)
      {
           printf("jaa seq> ");
           fflush(stdout);
 
           fgets_input(line);
-
-          //CTRL + D
-          if (line == NULL)
-          {
-               fprintf(stdout, "exit\n");
-               exit(EXIT_SUCCESS);
-          }
-         
-          if(!strcmp(line, EXIT))
-          {
-               exit(EXIT_SUCCESS);
-          }
-          else if (!strcmp(line, SEQ))
-          {
-               style_sequential();
-          }
-          else if (!strcmp(line, PAR))
-          {
-               style_parallel();
-          }
           
-          pid = fork();
+          //fflush(stdin);
+          if (!strcmp(line, EXIT))
+               exit(EXIT_SUCCESS);
 
-          if (pid < 0)
-          {
-               fprintf(stderr, "Fork Failed\n");
-               exit(EXIT_FAILURE);
-          }
-          else if (!pid)
-          {
-               if (execvp(argumentv[0], argumentv) < 0)
-                    fprintf(stderr, "command '%s' invalid\n", argumentv[0]);
-          }
-          else
-              wait(&status);
+          commandc = handling_input (commandv, line);
 
+          for (size_t i = 0; i < commandc; i++)
+          {
+               /* code */
+          
+
+               pid = fork();
+
+               if (pid < 0)
+               {
+                    fprintf(stderr, "Fork Failed\n");
+                    exit(EXIT_FAILURE);
+               }
+               else if (!pid)
+               {
+                    current_command(i, argumentv, commandv);
+
+                    if (execvp(argumentv[0], argumentv) < 0)
+                    {    //validar exit entre os comandos
+                         /*if (!strcmp(argumentv[0], EXIT))
+                         {
+                              fprintf(stderr, "exit\n");
+                              exit(EXIT_SUCCESS);
+                         }*/
+                    
+                         fprintf(stderr, "command '%s' invalid\n", argumentv[0]);
+                    }
+               }
+               else
+                   wait(&status);
+          }
      }
 }    
 
@@ -208,7 +212,7 @@ void fgets_input (char line[LIMIT_MAX])
 
      fgets(line, LIMIT_MAX, stdin);
 
-     for (size_t i = 0; i < strlen(args); i++)
+     for (size_t i = 0; i < strlen(line); i++)
           if (line[i] == '\t' || line[i] == '\r' || line[i] == '\a') 
                line[i] = '\0';
        
@@ -219,7 +223,7 @@ int handling_input(char *commandv[LIMIT_MAX/2 + 1], char line[LIMIT_MAX])
 {
      int argc = 0;
      int count = 0;
-     int limit = LIMIT_MAX/2 + 1;
+    
      char *args;
 
      strcpy(args,line);
@@ -237,21 +241,28 @@ int handling_input(char *commandv[LIMIT_MAX/2 + 1], char line[LIMIT_MAX])
         count++;
      }
           
-          for (size_t i = 0; i < count; i++)
-          {
-               while (argc < limit)
-               {
-                    if (!argc)
-                        argumentv[argc] = strtok(commandv[i], " ");
+     for (size_t i = 0; i < count; i++)
+     {
+         
+     }
+     return count;
+}
 
-                    else
-                        argumentv[argc] = strtok(NULL, " ");
+void current_command(int index,  char *argumentv[LIMIT_MAX/2 + 1], char *commandv[LIMIT_MAX/2 + 1])
+{
+     int argc = 0;
 
-                    if (argumentv[argc] == NULL)
-                        break;
+     while (argc < limit)
+     {
+          if (!argc)
+              argumentv[argc] = strtok(commandv[index], " ");
+          else
+              argumentv[argc] = strtok(NULL, " ");
+          if (argumentv[argc] == NULL)
+              break;
+         argc++;
+     }
+     argc = 0;
 
-                   argc++;
-               }
-               argc = 0;
-          }
+     commandv[index] == NULL;
 }
