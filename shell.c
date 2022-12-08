@@ -11,13 +11,15 @@
 #define SEQ "style sequential"
 #define PAR "style parallel"
 #define EXIT "exit"
+#define HISTORY "!!"
 
 void style_parallel(void);
 void style_sequential(void);
 void bash_mode(char *file);
-void fgets_input(char *line);
+void input(char *line);
 int handling_input (char **commandv, char *line);
 void current_command(int index,  char **argumentv, char **commandv);
+int is_in (char *line, char character);
 
 pid_t pid;
 int status;
@@ -28,6 +30,7 @@ char *commandv[LIMIT_MAX/2 + 1];
 int commandc;
 char *argumentv[LIMIT_MAX/2 + 1];
 int limit = LIMIT_MAX/2 + 1;
+char *history = '\0';
 
 
 void main(int argc, char *argv[])
@@ -52,43 +55,43 @@ void style_sequential()
           printf("jaa seq> ");
           fflush(stdout);
 
-          fgets_input(line);
+          input(line);
           
-          //fflush(stdin);
           if (!strcmp(line, EXIT))
                exit(EXIT_SUCCESS);
 
-          commandc = handling_input (commandv, line);
+          if (!strcmp(line, PAR))
+               style_parallel();
 
-          for (size_t i = 0; i < commandc; i++)
+          else if (!strcmp(line, SEQ))
+               style_sequential();
+
+          else
           {
-               /* code */
-          
+               commandc = handling_input (commandv, line);
 
-               pid = fork();
-
-               if (pid < 0)
+               for (size_t i = 0; i < commandc; i++)
                {
-                    fprintf(stderr, "Fork Failed\n");
-                    exit(EXIT_FAILURE);
-               }
-               else if (!pid)
-               {
-                    current_command(i, argumentv, commandv);
+                    pid = fork();
 
-                    if (execvp(argumentv[0], argumentv) < 0)
-                    {    //validar exit entre os comandos
-                         /*if (!strcmp(argumentv[0], EXIT))
-                         {
-                              fprintf(stderr, "exit\n");
-                              exit(EXIT_SUCCESS);
-                         }*/
-                    
-                         fprintf(stderr, "command '%s' invalid\n", argumentv[0]);
+                    if (pid < 0)
+                    {
+                         fprintf(stderr, "Fork Failed\n");
+                         exit(EXIT_FAILURE);
                     }
+                    else if (!pid)
+                    {
+                         current_command(i, argumentv, commandv);
+
+                         if (execvp(argumentv[0], argumentv) < 0)
+                         {             
+                              fprintf(stderr,"command '%s' invalid\n", argumentv[0]);
+                              exit(EXIT_FAILURE);
+                         }
+                    }
+                    else
+                         wait(&status);
                }
-               else
-                   wait(&status);
           }
      }
 }    
@@ -100,37 +103,46 @@ void  style_parallel()
           printf("jaa par> ");
           fflush(stdout);
 
-          //args = fgets(line, limit, stdin);
+                   input(line);
           
-          //CTRL + D
-          if (args == NULL)
-          {
-               fprintf(stdout, "exit\n");
+          if (!strcmp(line, EXIT))
                exit(EXIT_SUCCESS);
-          }
 
-          //arg = strtok(args, "\n");
-                                 
-          printf("%s\n", arg);
-         
-          if(!strcmp(args, EXIT))
-          {
-               exit(EXIT_SUCCESS);
-          }
-          else if (!strcmp(args, SEQ))
-          {
+          else if (!strcmp(line, SEQ))
                style_sequential();
-          }
-          else if (!strcmp(args, PAR))
-          {
+
+          else if (!strcmp(line, PAR))
                style_parallel();
-          }
           else
           {
-               //execvp();
+               commandc = handling_input (commandv, line);
+
+               for (size_t i = 0; i < commandc; i++)
+               {
+                    pid = fork();
+
+                    if (pid < 0)
+                    {
+                         fprintf(stderr, "Fork Failed\n");
+                         exit(EXIT_FAILURE);
+                    }
+                    else if (!pid)
+                    {
+                         current_command(i, argumentv, commandv);
+
+                         if (execvp(argumentv[0], argumentv) < 0)
+                         {                    
+                              fprintf(stderr,"command '%s' invalid\n", argumentv[0]);
+                              exit(EXIT_FAILURE);
+                         }
+
+                    }
+               }
+
+               for (size_t i = 0; i < commandc; i++)
+                    wait(&status);   
           }
-          
-     }
+     }    
 }
 
 void bash_mode(char *file)
@@ -206,11 +218,15 @@ void bash_mode(char *file)
     fclose(file_read);
 }
 
-void fgets_input (char line[LIMIT_MAX])
+void input (char *line)
 {
      fflush(stdin);
 
-     fgets(line, LIMIT_MAX, stdin);
+     if (fgets(line, LIMIT_MAX, stdin) == NULL)
+     {
+          fprintf(stdout, "exit\n");
+          exit(EXIT_SUCCESS);
+     }
 
      for (size_t i = 0; i < strlen(line); i++)
           if (line[i] == '\t' || line[i] == '\r' || line[i] == '\a') 
@@ -219,7 +235,7 @@ void fgets_input (char line[LIMIT_MAX])
      line[strlen(line) - 1] = '\0';
 }
 
-int handling_input(char *commandv[LIMIT_MAX/2 + 1], char line[LIMIT_MAX])
+int handling_input(char *commandv[LIMIT_MAX/2 + 1], char *line)
 {
      int argc = 0;
      int count = 0;
@@ -240,15 +256,10 @@ int handling_input(char *commandv[LIMIT_MAX/2 + 1], char line[LIMIT_MAX])
 
         count++;
      }
-          
-     for (size_t i = 0; i < count; i++)
-     {
-         
-     }
      return count;
 }
 
-void current_command(int index,  char *argumentv[LIMIT_MAX/2 + 1], char *commandv[LIMIT_MAX/2 + 1])
+void current_command(int index,  char **argumentv, char **commandv)
 {
      int argc = 0;
 
@@ -264,5 +275,20 @@ void current_command(int index,  char *argumentv[LIMIT_MAX/2 + 1], char *command
      }
      argc = 0;
 
-     commandv[index] == NULL;
+     commandv[index] = NULL;
+}
+
+int is_in (char *line, char character)
+{
+     int index = 0;
+
+     while (index < strlen(line))
+     {
+          if (line[index] == character)
+               return index;
+          else
+               index++;
+     }
+     
+     return -1;
 }
